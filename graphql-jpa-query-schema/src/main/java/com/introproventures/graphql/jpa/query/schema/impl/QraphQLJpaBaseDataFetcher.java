@@ -52,7 +52,6 @@ import javax.persistence.metamodel.SingularAttribute;
 
 import com.introproventures.graphql.jpa.query.annotation.GraphQLDefaultOrderBy;
 import com.introproventures.graphql.jpa.query.schema.impl.PredicateFilter.Criteria;
-
 import graphql.GraphQLException;
 import graphql.execution.ValuesResolver;
 import graphql.language.Argument;
@@ -178,14 +177,15 @@ class QraphQLJpaBaseDataFetcher implements DataFetcher<Object> {
                             if (attribute.getPersistentAttributeType() == Attribute.PersistentAttributeType.MANY_TO_ONE
                                 || attribute.getPersistentAttributeType() == Attribute.PersistentAttributeType.ONE_TO_ONE
                             ) {
-                                reuseJoin(from, selectedField.getName(), false);
+                               // Apply left outer join to retrieve optional associations
+                               reuseJoin(from, selectedField.getName(), true);
                             }
                         }
                     } else  {
                         // We must add plural attributes with explicit join to avoid Hibernate error: 
                         // "query specified join fetching, but the owner of the fetched association was not present in the select list"
-                        // TODO Let's try detect many-to-many relation and reuse outer join
-                        reuseJoin(from, selectedField.getName(), false);
+                        // Apply left outer join to retrieve optional associations
+                        reuseJoin(from, selectedField.getName(), true);
                     }
                 }
             }
@@ -260,7 +260,8 @@ class QraphQLJpaBaseDataFetcher implements DataFetcher<Object> {
 
             // If the argument is a list, let's assume we need to join and do an 'in' clause
             if (argumentEntityAttribute instanceof PluralAttribute) {
-                return reuseJoin(from, argument.getName(), false)
+                // Apply left outer join to retrieve optional associations
+                return reuseJoin(from, argument.getName(), true)
                     .in(convertValue(environment, argument, argument.getValue()));
             }
 
@@ -395,8 +396,9 @@ class QraphQLJpaBaseDataFetcher implements DataFetcher<Object> {
                 Map<String, Object> arguments = new LinkedHashMap<>();
 
                 arguments.put(logical.name(), environment.getArgument(fieldName));
-                
-                return getArgumentPredicate(cb, reuseJoin(path, fieldName, false),  
+
+                // Apply left outer join to retrieve optional associations
+                return getArgumentPredicate(cb, reuseJoin(path, fieldName, true),  
                                             wherePredicateEnvironment(environment, fieldDefinition, arguments),
                                             new Argument(logical.name(), expressionValue));
                }
